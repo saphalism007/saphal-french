@@ -11,7 +11,7 @@
  * prefix. That way it can never overwrite another project's offline copy.
  */
 const PREFIX = "saphal-french-";
-const CACHE = PREFIX + "0-14-0-built-2026-10-20-14-54";
+const CACHE = PREFIX + "0-15-0-built-2026-10-20-18-35";
 const BASE = new URL("./", self.location).pathname;
 const SHELL = ["./", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 
@@ -48,19 +48,30 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin || !ownsPath(url.pathname)) return;
 
   if (request.mode === "navigate") {
-    // GitHub Pages tells browsers to keep pages for ten minutes. no-store skips
-    // that copy so a new version shows the moment it is published.
-    event.respondWith(
-      fetch(request.url, { cache: "no-store" })
-        .then((response) => {
-          if (response.ok && (url.pathname === BASE || url.pathname === BASE + "index.html")) {
-            const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put("./", copy));
-          }
-          return response;
-        })
-        .catch(() => caches.match("./").then((hit) => hit || Response.error()))
-    );
+    // The page on this device opens at once, with no wait for the network.
+    // A fresh copy is fetched behind it (no-store skips the ten minute copy
+    // GitHub Pages asks browsers to keep) and saved for next time. A new
+    // version also arrives with a new worker, which reloads the open page.
+    const isMain = url.pathname === BASE || url.pathname === BASE + "index.html";
+    const fresh = fetch(request.url, { cache: "no-store" }).then((response) => {
+      if (response.ok && isMain) {
+        const copy = response.clone();
+        caches.open(CACHE).then((cache) => cache.put("./", copy));
+      }
+      return response;
+    });
+    event.respondWith((async () => {
+      const saved = isMain ? await caches.match("./") : undefined;
+      if (saved) {
+        event.waitUntil(fresh.catch(() => {}));
+        return saved;
+      }
+      try {
+        return await fresh;
+      } catch {
+        return (await caches.match("./")) || Response.error();
+      }
+    })());
     return;
   }
 
