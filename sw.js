@@ -11,7 +11,7 @@
  * prefix. That way it can never overwrite another project's offline copy.
  */
 const PREFIX = "saphal-french-";
-const CACHE = PREFIX + "0-13-0-built-2026-10-20-13-15";
+const CACHE = PREFIX + "0-14-0-built-2026-10-20-14-54";
 const BASE = new URL("./", self.location).pathname;
 const SHELL = ["./", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 
