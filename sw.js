@@ -11,7 +11,11 @@
  * prefix. That way it can never overwrite another project's offline copy.
  */
 const PREFIX = "saphal-french-";
-const CACHE = PREFIX + "0-18-1-built-2026-10-21-07-39";
+const CACHE = PREFIX + "0-19-0-built-2026-10-21-17-38";
+// The dictionary and the Ear trainer's sentence list are large and change
+// rarely. Their file names carry a hash of their content, so they live in a
+// cache of their own that survives app updates; only a replaced file is dropped.
+const DATA = PREFIX + "data";
 const BASE = new URL("./", self.location).pathname;
 const SHELL = ["./", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 
@@ -30,7 +34,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    const old = keys.filter((k) => k.startsWith(PREFIX) && k !== CACHE);
+    const old = keys.filter((k) => k.startsWith(PREFIX) && k !== CACHE && k !== DATA);
     await Promise.all(old.map((k) => caches.delete(k)));
     await self.clients.claim();
     // Only an update reloads open pages. A first install has nothing older to replace.
@@ -73,6 +77,29 @@ self.addEventListener("fetch", (event) => {
       } catch {
         return (await caches.match("./")) || Response.error();
       }
+    })());
+    return;
+  }
+
+  if (/\/(dict|ear)\/[^/]+\.json$/.test(url.pathname)) {
+    event.respondWith((async () => {
+      const data = await caches.open(DATA);
+      const hit = (await data.match(request)) || (await caches.match(request));
+      if (hit) return hit;
+      const response = await fetch(request);
+      if (response.ok) {
+        // saved behind the page, so a download's progress still shows as it arrives
+        const copy = response.clone();
+        event.waitUntil((async () => {
+          const folder = url.pathname.replace(/[^/]*$/, "");
+          for (const k of await data.keys()) {
+            const p = new URL(k.url).pathname;
+            if (p.startsWith(folder) && p !== url.pathname) await data.delete(k);
+          }
+          await data.put(request, copy);
+        })());
+      }
+      return response;
     })());
     return;
   }
