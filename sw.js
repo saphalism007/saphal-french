@@ -11,7 +11,7 @@
  * prefix. That way it can never overwrite another project's offline copy.
  */
 const PREFIX = "saphal-french-";
-const CACHE = PREFIX + "0-22-1-built-2026-10-23-06-06";
+const CACHE = PREFIX + "0-23-0-built-2026-10-23-15-38";
 // The dictionary and the Ear trainer's sentence list are large and change
 // rarely. Their file names carry a hash of their content, so they live in a
 // cache of their own that survives app updates; only a replaced file is dropped.
